@@ -52,14 +52,16 @@ impl Board {
                         {
                             needed_values.remove(needed_value_idx);
                         } else {
-                            section_violations
-                                .upsert(&cell_group_descriptor, &format!("multiple {value}s"));
+                            section_violations.upsert(
+                                cell_group_descriptor.clone(),
+                                format!("multiple {value}s"),
+                            );
                         }
                     }
                 }
                 for unused_value in &needed_values {
                     section_violations
-                        .upsert(&cell_group_descriptor, &format!("no {unused_value}s"));
+                        .upsert(cell_group_descriptor.clone(), format!("no {unused_value}s"));
                 }
             }
         }

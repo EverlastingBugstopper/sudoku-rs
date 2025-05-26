@@ -1,24 +1,21 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub(crate) struct SectionViolations {
-    inner: HashMap<String, Vec<String>>,
+    inner: BTreeMap<String, Vec<String>>,
 }
 
 impl SectionViolations {
     pub(crate) fn new() -> Self {
         Self {
-            inner: HashMap::new(),
+            inner: BTreeMap::new(),
         }
     }
 
-    pub(crate) fn upsert(&mut self, cell_group_descriptor: &str, violation: &str) {
-        if let Some(violations) = self.inner.get_mut(cell_group_descriptor) {
-            violations.push(violation.to_string());
+    pub(crate) fn upsert(&mut self, cell_group_descriptor: String, violation: String) {
+        if let Some(violations) = self.inner.get_mut(&cell_group_descriptor) {
+            violations.push(violation);
         } else {
-            self.inner.insert(
-                cell_group_descriptor.to_string(),
-                vec![violation.to_string()],
-            );
+            self.inner.insert(cell_group_descriptor, vec![violation]);
         }
     }
 
