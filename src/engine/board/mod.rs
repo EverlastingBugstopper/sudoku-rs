@@ -3,10 +3,20 @@ use std::{fmt, str::FromStr};
 mod cell;
 mod number;
 mod row;
+mod violations;
+
+use violations::SectionViolations;
 
 use {cell::Cell, row::Row};
 
 type CellGroup<'a> = Vec<&'a Cell>;
+
+#[derive(Debug)]
+enum CellGroupKind {
+    Row,
+    Region,
+    Column,
+}
 
 pub struct Board {
     inner: [Row; 9],
@@ -23,22 +33,43 @@ impl Board {
         self.inner[row_idx].set(cell, col_idx);
     }
 
-    pub fn is_solved(&self) -> bool {
-        let mut solved = true;
+    pub fn check_solution(&self) -> Result<(), Vec<String>> {
+        let mut section_violations = SectionViolations::new();
 
-        let mut cell_groups: Vec<CellGroup> =
-            [self.regions(), self.columns(), self.rows()].concat();
-
-        for cell_group in cell_groups.iter_mut() {
-            cell_group.sort();
-            let values: Vec<u8> = cell_group.iter().filter_map(|cell| cell.value()).collect();
-            if values != (1..=9).collect::<Vec<u8>>() {
-                solved = false;
-                break;
+        for (cell_group_kind, cell_groups) in [
+            (CellGroupKind::Row, self.rows()),
+            (CellGroupKind::Column, self.columns()),
+            (CellGroupKind::Region, self.regions()),
+        ] {
+            for (cell_group_idx, cell_group) in cell_groups.iter().enumerate() {
+                let cell_group_descriptor = format!("{cell_group_kind:?} {}", cell_group_idx + 1);
+                let mut needed_values = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+                for cell in cell_group {
+                    if let Some(value) = cell.value() {
+                        if let Some(needed_value_idx) = needed_values
+                            .iter()
+                            .position(|needed_value| needed_value == &value)
+                        {
+                            needed_values.remove(needed_value_idx);
+                        } else {
+                            section_violations
+                                .upsert(&cell_group_descriptor, &format!("multiple {value}s"));
+                        }
+                    }
+                }
+                for unused_value in &needed_values {
+                    section_violations
+                        .upsert(&cell_group_descriptor, &format!("no {unused_value}s"));
+                }
             }
         }
 
-        solved
+        if section_violations.is_empty() {
+            Ok(())
+        } else {
+            let result = section_violations.result();
+            Err(result)
+        }
     }
 
     fn write_top_border(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
